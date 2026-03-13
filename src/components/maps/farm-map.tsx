@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 // Fix leaflet default icon in Next.js
 const markerIcon = typeof window !== "undefined"
