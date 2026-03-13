@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npx create-next-app@latest . --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm)",
+      "Read(//e/Claude Code Projects/**)",
+      "Bash(npx create-next-app@latest farmer-aggregation --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm)",
+      "Bash(npx create-next-app@latest temp-init --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm)",
+      "Bash(npx create-next-app@latest temp-init --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npx create-next-app@latest temp-init --ts --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --turbopack)",
+      "Bash(cp -r temp-init/* .)",
+      "Bash(cp temp-init/.gitignore .)",
+      "Bash(cp temp-init/.eslintrc.json .)",
+      "Bash(cp -r temp-init/.next .)",
+      "Bash(rm -rf temp-init)",
+      "Bash(npm pkg:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx shadcn@latest init --defaults)"
+    ]
+  }
+}
