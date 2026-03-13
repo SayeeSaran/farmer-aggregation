@@ -1,13 +1,288 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ─── ENUMS ────────────────────────────────────────────────
+
+enum UserRole {
+  FARMER
+  AGGREGATOR
+  VERIFIER
+  ADMIN
+}
+
+enum PoolStatus {
+  FORMING
+  VALIDATION
+  REGISTERED
+  MONITORING
+  CREDIT_ISSUED
+  CLOSED
+}
+
+enum PoolType {
+  AUTO_REGIONAL
+  MANAGED
+}
+
+enum EligibilityStatus {
+  PENDING
+  ELIGIBLE
+  INELIGIBLE
+  NEEDS_REVIEW
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+enum LandUseHistory {
+  CROPLAND
+  GRASSLAND
+  DEGRADED
+  BARREN
+  SHRUBLAND
+  WETLAND
+  OTHER
+}
+
+enum ReportType {
+  PLANTING
+  SURVIVAL_ASSESSMENT
+  GROWTH_MEASUREMENT
+  MAINTENANCE
+  PHOTO_DOCUMENTATION
+}
+
+// ─── MODELS ───────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  emailVerified  DateTime?
+  hashedPassword String?
+  image          String?
+  phone          String?
+  role           UserRole  @default(FARMER)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  farms         Farm[]
+  farmerReports FarmerReport[]
+  verifications VerificationRecord[]
+  managedPools  Pool[]
+
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Farm {
+  id                String         @id @default(cuid())
+  name              String
+  ownerId           String
+  latitude          Float
+  longitude         Float
+  sizeHectares      Float
+  landUseHistory    LandUseHistory
+  yearsNonForest    Int
+  currentVegetation String?
+  speciesPlanned    String[]
+  ownershipDocUrl   String?
+  boundaryGeoJson   Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  owner                  User                    @relation(fields: [ownerId], references: [id])
+  eligibilityAssessments EligibilityAssessment[]
+  poolMemberships        PoolMembership[]
+  monitoringReports      MonitoringReport[]
+  farmerReports          FarmerReport[]
+  carbonEstimates        CarbonEstimate[]
+
+  @@index([ownerId])
+  @@index([latitude, longitude])
+}
+
+model EligibilityAssessment {
+  id                   String            @id @default(cuid())
+  farmId               String
+  status               EligibilityStatus @default(PENDING)
+  overallScore         Float
+  landHistoryScore     Float
+  additionalityScore   Float
+  landTenureScore      Float
+  regionEligibility    Boolean
+  creditingPeriodYears Int
+  baselineScenario     String?
+  criteriaDetails      Json
+  notes                String?
+  assessedAt           DateTime          @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@index([farmId])
+  @@index([status])
+}
+
+model Pool {
+  id               String     @id @default(cuid())
+  name             String
+  description      String?
+  type             PoolType
+  status           PoolStatus @default(FORMING)
+  regionName       String?
+  regionBoundary   Json?
+  managerId        String?
+  minHectares      Float      @default(0)
+  maxMembers       Int?
+  totalHectares    Float      @default(0)
+  estimatedCredits Float      @default(0)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  manager         User?            @relation(fields: [managerId], references: [id])
+  memberships     PoolMembership[]
+  carbonEstimates CarbonEstimate[]
+
+  @@index([status])
+  @@index([type])
+}
+
+model PoolMembership {
+  id       String   @id @default(cuid())
+  poolId   String
+  farmId   String
+  joinedAt DateTime @default(now())
+  isActive Boolean  @default(true)
+
+  pool Pool @relation(fields: [poolId], references: [id])
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@unique([poolId, farmId])
+}
+
+model MonitoringReport {
+  id             String   @id @default(cuid())
+  farmId         String
+  captureDate    DateTime
+  ndviValue      Float?
+  ndviMin        Float?
+  ndviMax        Float?
+  ndviImageUrl   String?
+  rgbImageUrl    String?
+  changeDetected Boolean  @default(false)
+  changeType     String?
+  rawData        Json?
+  createdAt      DateTime @default(now())
+
+  farm                Farm                 @relation(fields: [farmId], references: [id])
+  verificationRecords VerificationRecord[]
+
+  @@index([farmId])
+  @@index([captureDate])
+}
+
+model FarmerReport {
+  id             String     @id @default(cuid())
+  farmId         String
+  reporterId     String
+  reportType     ReportType
+  reportDate     DateTime   @default(now())
+  description    String?
+  speciesPlanted String[]
+  areaPlantedHa  Float?
+  survivalRate   Float?
+  photos         Json[]
+  activityData   Json?
+  createdAt      DateTime   @default(now())
+
+  farm                Farm                 @relation(fields: [farmId], references: [id])
+  reporter            User                 @relation(fields: [reporterId], references: [id])
+  verificationRecords VerificationRecord[]
+
+  @@index([farmId])
+  @@index([reporterId])
+}
+
+model VerificationRecord {
+  id                 String             @id @default(cuid())
+  verifierId         String
+  monitoringReportId String?
+  farmerReportId     String?
+  status             VerificationStatus @default(PENDING)
+  findings           String?
+  anomaliesDetected  Boolean            @default(false)
+  anomalyDetails     String?
+  verifiedAt         DateTime?
+  createdAt          DateTime           @default(now())
+
+  verifier         User              @relation(fields: [verifierId], references: [id])
+  monitoringReport MonitoringReport? @relation(fields: [monitoringReportId], references: [id])
+  farmerReport     FarmerReport?     @relation(fields: [farmerReportId], references: [id])
+
+  @@index([verifierId])
+  @@index([status])
+}
+
+model CarbonEstimate {
+  id                   String   @id @default(cuid())
+  farmId               String?
+  poolId               String?
+  estimationDate       DateTime @default(now())
+  annualSequestrationT Float
+  totalSequestrationT  Float
+  methodology          String   @default("VM0047")
+  estimationInputs     Json
+  confidenceLevel      Float?
+
+  farm Farm? @relation(fields: [farmId], references: [id])
+  pool Pool? @relation(fields: [poolId], references: [id])
+
+  @@index([farmId])
+  @@index([poolId])
 }
