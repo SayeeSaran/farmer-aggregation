@@ -57,7 +57,7 @@ export const authConfig: NextAuthConfig = {
 
         if (!user?.hashedPassword) return null;
 
-        const passwordMatch = await bcrypt.compare(parsed.data.password, user.hashedPassword);
+        const passwordMatch = await bcrypt.default.compare(parsed.data.password, user.hashedPassword);
         if (!passwordMatch) return null;
 
         return { id: user.id, email: user.email, name: user.name, role: user.role, image: user.image };

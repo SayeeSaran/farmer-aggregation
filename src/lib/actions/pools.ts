@@ -124,7 +124,8 @@ export async function getPools(filters?: { status?: string; type?: string }) {
     },
     include: {
       manager: { select: { name: true } },
-      _count: { select: { memberships: { where: { isActive: true } } } },
+      _count: { select: { memberships: true } },
+      memberships: { where: { isActive: true }, select: { id: true } },
     },
     orderBy: { createdAt: "desc" },
   });

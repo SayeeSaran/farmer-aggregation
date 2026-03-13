@@ -251,7 +251,7 @@ model FarmerReport {
 
 model VerificationRecord {
   id                 String             @id @default(cuid())
-  verifierId         String
+  verifierId         String?
   monitoringReportId String?
   farmerReportId     String?
   status             VerificationStatus @default(PENDING)
@@ -261,7 +261,7 @@ model VerificationRecord {
   verifiedAt         DateTime?
   createdAt          DateTime           @default(now())
 
-  verifier         User              @relation(fields: [verifierId], references: [id])
+  verifier         User?             @relation(fields: [verifierId], references: [id])
   monitoringReport MonitoringReport? @relation(fields: [monitoringReportId], references: [id])
   farmerReport     FarmerReport?     @relation(fields: [farmerReportId], references: [id])
 

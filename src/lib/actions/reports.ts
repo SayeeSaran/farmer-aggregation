@@ -48,7 +48,6 @@ export async function submitFarmerReport(formData: FormData) {
   // Create a pending verification record
   await prisma.verificationRecord.create({
     data: {
-      verifierId: session.user.id, // Will be reassigned to a verifier
       farmerReportId: report.id,
       status: "PENDING",
     },
