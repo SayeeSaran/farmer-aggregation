@@ -7,12 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, Leaf, TrendingUp, MapPin, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-
-const DynamicFarmMap = dynamic(() => import("@/components/maps/farm-map"), {
-  ssr: false,
-  loading: () => <div className="h-[300px] bg-muted rounded-md animate-pulse" />,
-});
+import FarmMap from "@/components/maps/farm-map";
 
 const statusColor: Record<string, string> = {
   FORMING: "bg-blue-100 text-blue-800",
@@ -97,7 +92,7 @@ export default async function PoolDetailPage({ params }: { params: Promise<{ id:
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <DynamicFarmMap
+            <FarmMap
               lat={avgLat}
               lng={avgLng}
               markers={mapMarkers}
