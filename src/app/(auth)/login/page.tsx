@@ -55,6 +55,13 @@ export default function LoginPage() {
           <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
           </Button>
+          <div className="w-full rounded-md border border-green-200 bg-green-50 p-3 text-xs text-green-800 space-y-1">
+            <p className="font-semibold">Trial accounts — no sign-up needed (password: <code>password123</code>)</p>
+            <p>Admin: <code>admin@carbonfarm.io</code></p>
+            <p>Aggregator: <code>aggregator@carbonfarm.io</code></p>
+            <p>Verifier: <code>verifier@carbonfarm.io</code></p>
+            <p>Farmer: <code>juan@example.com</code></p>
+          </div>
           <p className="text-sm text-muted-foreground text-center">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="text-green-600 hover:underline font-medium">
