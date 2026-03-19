@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/", "/login", "/register", "/api/auth"];
+// Only these routes require authentication — everything else is public
+const PROTECTED_PATHS = [
+  "/dashboard", "/eligibility", "/farms", "/pools",
+  "/monitoring", "/reports", "/verification", "/admin",
+];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/")) ||
-    pathname.startsWith("/_next") ||
-    /\.(png|jpg|svg|ico|css|js|woff|woff2)$/.test(pathname);
+  const isProtected = PROTECTED_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + "/")
+  );
 
-  if (isPublic) return NextResponse.next();
+  if (!isProtected) return NextResponse.next();
 
   // Check for auth session cookie (Auth.js v5 uses authjs.session-token)
   const sessionToken =

@@ -1,470 +1,238 @@
-# CarbonFarm — Conceptual Product Overview
+# CarbonFarm.io — Product & System Design Overview
+
+> **Context for Claude Chat continuity:** This document captures the full state of the CarbonFarm.io project as of March 2026. Use it to resume work in any Claude session. The codebase lives at `github.com/SayeeSaran/farmer-aggregation` and is deployed at `farmer-aggregation.vercel.app`.
+
+---
+
+## What Changed Since V1
+
+The first version was a full-stack dashboard platform with login, farm registration, pool management, satellite monitoring, and verification workflows. After reviewing the MVP scope, we made significant changes:
+
+| Area | V1 (Dashboard Platform) | V2 (MVP Screener) |
+|------|------------------------|-------------------|
+| **Entry point** | Login required for everything | Public landing page + questionnaire, no auth needed |
+| **Core flow** | Register → add farm → run eligibility → join pool → monitor | Answer 14 questions → get verdict + carbon estimate |
+| **Eligibility** | 5-criterion weighted percentage score (≥70% = eligible) | 6-criterion hard-exclusion + soft-flag (pass/flag/fail per criterion) |
+| **New criteria** | — | Pre-existing canopy cover (§6.2), Regulatory surplus (§7.3.1) |
+| **Removed criteria** | Additionality self-assessment, region bounding boxes | Removed — not for farmers to self-report |
+| **Carbon model** | Fixed 0.26 root-to-shoot ratio, generic growth rates | IPCC 2019 Table 4.4 root-to-shoot ratios + Table 4.12 MAI by species/climate |
+| **Species** | Single species selection | Multi-species with weighted averaging |
+| **Pooling** | Interactive pool management + Haversine auto-clustering | Explainer text only — "your X ha joins a pool, we handle aggregation" |
+| **Satellite/NDVI** | Sentinel Hub integration with NDVI charts | Removed from MVP — placeholder data undermines trust |
+| **Verifier role** | Full verification workflow | Removed from MVP |
+| **File uploads** | Photo uploads with EXIF geo-validation | Removed — zero friction questionnaire only |
+| **i18n** | None | English + Tamil (ta-IN) via react-i18next, all strings externalized |
+| **Methodology page** | None | Full VM0047 reference mapping every question to methodology sections |
+| **Design tone** | Dashboard/startup feel | Lightweight pre-feasibility memo, professional and plain language |
+| **Deployment** | Local only | Vercel (farmer-aggregation.vercel.app) |
+
+**The V1 code is still in the repo** — old dashboard pages exist under `src/app/(platform)/` and `src/app/(auth)/` but aren't linked from the public screening flow. They're accessible by URL but protected behind auth middleware. Nothing was deleted.
+
+---
 
 ## 1. Problem Definition
 
-### The Core Problem
+**The problem:** The voluntary carbon market requires projects to meet rigorous standards (Verra VM0047 for tree planting), but smallholder farmers in the Global South have no way to know if their land even qualifies. Assessment typically costs thousands of dollars in consultant fees, takes months, and requires technical knowledge of carbon methodologies. This creates a barrier where the farmers who could benefit most from carbon credit income are locked out before they even start.
 
-The global carbon credit market pays landowners to grow trees that absorb CO₂ — but it has a **minimum viable project size of roughly 1,000+ hectares**. A farmer with 2 hectares is mathematically excluded.
+Beyond individual eligibility, carbon registries require minimum project sizes (typically 100+ hectares), making it impossible for a farmer with 2–5 hectares to register a project alone.
 
-Beyond access, ongoing proof of tree growth (called **MRV — Measurement, Reporting, Verification**) requires expensive consultants and field surveys that small farmers cannot afford.
-
-**Result:** The farmers who could benefit most from carbon income — smallholders in tropical regions where reforestation has the highest climate impact — are locked out entirely.
-
-### Intended Users
-
-- **Smallholder farmers** in Southeast Asia, Africa, Latin America — typically 1–5 hectares, low technical literacy, primary income from agriculture
-- **Aggregators / project developers** — NGOs, cooperatives, or private developers who bundle farms into certifiable projects
-- **Verifiers** — independent auditors who confirm reported data is credible
-- **Platform administrators** — operators managing the system
+**Intended users:**
+- **Primary:** Smallholder farmers and landowners (1–50 ha) in tropical/subtropical regions (India, Southeast Asia, Sub-Saharan Africa, Latin America) who want to know if their plantation or restoration activity could earn carbon credits
+- **Secondary:** Project aggregators/developers who bundle small farms into registry-scale projects
+- **Future:** Verifiers, buyers, and platform administrators
 
 ---
 
 ## 2. Core Product Concept
 
-The platform is a **digital aggregation and monitoring layer** between smallholder farmers and the formal carbon market. Three things make it work together:
+CarbonFarm.io is a **VM0047 ARR pre-feasibility screening tool**. The core idea:
 
-### ① Lower the entry barrier
-Automate the eligibility assessment so a farmer doesn't need a consultant to find out if their land qualifies. Answer a guided questionnaire, get an instant score.
+1. **A farmer answers 14 questions** about their land (no uploads, no signup, no jargon)
+2. **The system checks their answers against VM0047 criteria** and returns a clear verdict: Eligible, Needs Review, or Ineligible — with a one-sentence explanation for each criterion
+3. **A carbon credit estimate** shows the potential value of their land over 20, 30, or 50 years — presented as a range, not a guaranteed figure
+4. **A pooling explainer** tells small landholders how CarbonFarm handles aggregation so they don't need 100+ hectares themselves
 
-### ② Pool small farms into one project
-Group geographically nearby eligible farms together so their combined acreage meets registry thresholds. What was inaccessible to one farmer at 2 hectares becomes viable as a group at 200 hectares.
-
-### ③ Automate the monitoring
-Replace expensive annual field surveys with satellite imagery (free, global, every 5 days) plus structured farmer self-reporting through a mobile-friendly interface. This makes ongoing compliance affordable at small scale.
-
-### The underlying logic
-Carbon registries don't care how many individual farmers are in a project — they care that the land area, methodology, and monitoring data meet their standards. This platform handles all the complexity of aggregation and monitoring so farmers just need to show up and plant trees.
+The product intentionally feels like a **pre-feasibility memo**, not a dashboard. It's designed for a farmer in rural Tamil Nadu to complete on their phone in under 5 minutes, in their own language.
 
 ---
 
 ## 3. User Roles
 
-### 🌱 Farmer
-The primary beneficiary.
-- Registers their farm
-- Runs an eligibility check
-- Joins a pool
-- Submits periodic field reports (photos, tree counts, growth measurements)
-- Tracks estimated carbon earnings
+**In the live MVP:** No user roles. The screening is completely anonymous — no login, no account creation, no data stored server-side. Questionnaire answers live in browser sessionStorage only.
 
-The entire experience is designed assuming **low technical literacy** — step-by-step wizards, map-click interfaces, no jargon.
+**In the V1 platform code (still in repo, not public-facing):**
+- **FARMER** — Register farms, run eligibility, join pools, submit field reports
+- **AGGREGATOR** — Create/manage pools, oversee project lifecycle
+- **VERIFIER** — Review satellite + farmer data side-by-side, approve/reject
+- **ADMIN** — System-wide visibility, user management
 
-### 📊 Aggregator
-A project developer, NGO, or cooperative.
-- Creates and manages pools
-- Monitors pool health (total hectares, farmer count, carbon estimate)
-- Shepherds the pool through its lifecycle toward registry submission
-- Legally responsible for the project in the eyes of the carbon registry
-
-### 🔍 Verifier
-An independent auditor.
-- Reviews satellite data and farmer-reported data side by side
-- Looks for inconsistencies
-- Formally approves or rejects each monitoring cycle
-- **Cannot edit data** — only evaluate and rule
-- Decisions form the audit trail the registry requires
-
-### 🔑 Admin
-Platform operator.
-- Manages user accounts
-- Monitors system-wide metrics
-- Handles edge cases
-- Not part of the carbon credit workflow itself
-
-### Key Design Principle
-**Strict role separation.** A farmer never sees another farmer's data. A verifier can see everything but change nothing. An aggregator manages their pools but not the platform. This isn't just a UX choice — it's an integrity requirement for a system producing financial instruments.
+These roles exist in the Prisma schema and auth system but are not part of the current MVP flow.
 
 ---
 
 ## 4. Aggregation Model
 
-### Auto-regional Pooling
-**Fully automated.**
-- Scans all eligible farms not yet assigned to a pool
-- Calculates geographic distances using the **Haversine formula** (accurate great-circle distance on Earth's curved surface)
-- Clusters farms within a configurable radius — e.g., 50km — into a candidate pool
-- No human intervention needed
-- Scales to thousands of farmers without aggregator effort
+**In the live MVP:** Pooling is presented as a concept, not an interactive feature. After the eligibility result, a card explains:
 
-### Managed Pooling
-**Human-directed.**
-- An aggregator creates a pool with a specific purpose
-- Perhaps targeting a donor-funded program, a specific ethnic community, or a particular tree species
-- Farmers browse available pools and apply to join, or aggregators invite them directly
+> "Your X ha would join a larger pool of nearby landowners. Carbon registries typically require projects of 100+ hectares. CarbonFarm handles the aggregation — grouping your land with others in your region into a single registered project."
 
-### Current Grouping Criteria
-- **Geographic proximity** (distance between farms)
-- **Eligibility status** (must have passed eligibility check, must not be in another pool)
+**In the V1 code (not public):**
+- **Auto-regional pooling** uses Haversine distance to cluster eligible farms within 25 km radius. Clusters ≥100 ha and ≥2 farms automatically form a pool.
+- **Managed pooling** lets aggregators manually create pools with specific criteria.
+- Pool lifecycle: FORMING → VALIDATION → REGISTERED → MONITORING → CREDIT_ISSUED → CLOSED
 
-### In a Production System You'd Add
-- **Methodology compatibility** — all farms must qualify under the same rulebook
-- **Species alignment** — important for carbon modelling
-- **Crediting period consistency** — all farmers commit to the same duration
-
-### Pool Lifecycle
-```
-FORMING → VALIDATION → REGISTERED → MONITORING → CREDIT_ISSUED
-```
-
-Each stage has different data requirements and actor responsibilities.
+**Criteria used:** Geographic proximity (primary), eligibility status (must be eligible), pool membership (must not already be in an active pool). Species compatibility and crediting period alignment are not yet factored in but should be for real project bundling.
 
 ---
 
 ## 5. Eligibility / Feasibility Logic
 
-The eligibility engine scores each farm against **five criteria** drawn directly from **Verra's VM0047 methodology** — the international rulebook for Afforestation, Reforestation, and Revegetation carbon projects:
+The MVP eligibility engine checks **6 criteria** derived from VM0047 v1.1:
 
-| Criterion | Weight | The Rule |
-|-----------|--------|----------|
-| **Land history** | 30% | Land must have been non-forest for at least 10 years. If recently deforested, planting trees just reverses damage — doesn't create new carbon value |
-| **Additionality** | 25% | Trees wouldn't be planted without the carbon credit incentive. Prevents claiming credit for forests that would grow anyway |
-| **Land tenure** | 20% | Farmer must own or have documented rights to land for the full crediting period. A 30-year project on land without legal security is unenforceable |
-| **Region eligibility** | 15% | Some geographies excluded from certain methodologies based on baseline deforestation rates |
-| **Crediting period** | 10% | Must be between 20 and 100 years — Verra's hard boundary |
+| # | Criterion | VM0047 Section | Logic | Hard Fail Trigger |
+|---|-----------|---------------|-------|-------------------|
+| 1 | **Land History** | §4.4.1, §4.4.2 | Was land managed forest / timber harvested / woody biomass removed in last 10 years? | Any "yes" → INELIGIBLE |
+| 2 | **Pre-existing Canopy Cover** | §6.2 | Current tree cover percentage | >30% → INELIGIBLE (already forest) |
+| 3 | **Land Tenure** | General requirement | Ownership type + documented proof | Weak ownership + no documents → INELIGIBLE |
+| 4 | **Crediting Period** | §3.2 | How long can land be committed? | <20 years → INELIGIBLE |
+| 5 | **Regulatory Surplus** | §7.3.1 | Is planting required by law? | "Yes" → INELIGIBLE (not additional) |
+| 6 | **Planting Design** | Land use continuity | Will land stay planted? | "No" → INELIGIBLE (reversal risk) |
 
-### Scoring Outcome
+**Verdict logic:**
+- Any criterion fails → **INELIGIBLE**
+- No failures but ≥1 "not sure" / uncertain → **NEEDS_REVIEW**
+- All pass → **ELIGIBLE**
 
-| Score | Status |
-|-------|--------|
-| ≥70% + all mandatory pass | **Eligible** |
-| 50–69% | **Needs Human Review** |
-| <50% or mandatory fail | **Ineligible** |
+**What we deliberately removed from V1:**
+- Additionality self-assessment ("would you plant without carbon income?") — not appropriate for farmer self-reporting
+- Region eligibility bounding boxes — too coarse, replaced by country selection
+- Weighted percentage scoring — replaced with binary pass/flag/fail per criterion
 
-### Important Caveat
-This scoring is a **pre-screening heuristic**, not a legally defensible assessment.
-
-A real VM0047 project requires:
-- Full Project Design Document prepared by a certified consultant
-- Baseline studies
-- Third-party validation audit
-
-**What we've built:** Filters out clearly ineligible farms cheaply and quickly — the formal process follows for those who pass.
+**Monitoring approach determination** (VM0047 §4.3):
+- ≤50 trees/ha + direct planting → Census-based (count every tree)
+- Everything else → Area-based (sample plots + remote sensing)
 
 ---
 
 ## 6. MRV Concept
 
-**MRV = Measurement, Reporting, and Verification**
+**In the live MVP:** MRV is not implemented. The screening tool is pre-project — it determines whether MRV is worth pursuing, not how to do it.
 
-MRV is the heart of carbon credit integrity. Without credible, ongoing proof that trees are growing, the credits are worthless. The system uses two data streams that cross-validate each other:
+**In the V1 code (not public):**
 
-### Measurement — What's actually happening on the ground
+| Component | Approach | Data Source |
+|-----------|----------|-------------|
+| **Measurement** | NDVI time-series from Sentinel-2 satellite imagery | Sentinel Hub API (not connected — was placeholder data) |
+| **Measurement** | Farmer self-reporting: tree counts, growth, geo-tagged photos | Mobile upload with EXIF GPS verification |
+| **Reporting** | Aggregation of satellite + farmer data into monitoring reports | MonitoringReport + FarmerReport models |
+| **Verification** | Side-by-side comparison panel for verifiers | VerificationRecord with APPROVED/REJECTED/FLAGGED |
 
-#### Satellite-derived
-- **Data source:** Sentinel-2 satellite imagery (freely available from ESA, revisit time ~5 days)
-- **Metric:** NDVI — Normalized Difference Vegetation Index
-- **What it measures:** Difference in how vegetation reflects red vs. near-infrared light
-  - Healthy, dense vegetation = high NDVI
-  - Bare or degraded land = low NDVI
-- **Signal:** Rising NDVI trend over months/years = trees are genuinely growing
-
-#### Farmer-reported
-- **Data types:** Structured field reports submitted through app
-  - Tree survival rates
-  - Height measurements
-  - Photographs
-- **Validation:** Photos are geo-tagged and GPS coordinates verified against registered farm location
-- **Checks:** Timestamps validated for plausibility
-
-### Reporting — Packaging the data
-
-Each monitoring period (e.g., annually) produces a **monitoring report** combining both data streams into a structured record covering the time period. This is what gets submitted to the carbon registry.
-
-### Verification — Independent human review
-
-A **verifier** reviews satellite data versus farmer reports side by side. The system automatically flags **anomalies**:
-- Farmer reporting 95% tree survival while NDVI is declining
-- Photo GPS location 50km from registered farm
-- Report submitted with timestamp predating the planting date
-
-The verifier **investigates flags**, then formally **approves or rejects** the monitoring period. Their decision is logged immutably.
-
-### Carbon Estimation
-
-**Simplified allometric model:**
-```
-tree species + land area + estimated age
-→ above-ground biomass
-→ add below-ground biomass (~26% of above-ground)
-→ multiply by 0.47 (carbon fraction of biomass)
-→ multiply by 44/12 (molecular weight ratio of CO₂ to carbon)
-→ tonnes of CO₂ equivalent
-```
-
-This number, aggregated across the pool, is the **credit volume**.
+**Why removed from MVP:** Placeholder satellite data undermines trust. MRV is Phase 2.
 
 ---
 
 ## 7. Data Model
 
-### Entity Relationships
+**12 Prisma models** in the database schema:
 
 ```
-User (Farmer) ─── has many ──── Farms
-                                   ├── has one ──── EligibilityAssessment
-                                   ├── has many ─── FarmerReports
-                                   ├── has many ─── MonitoringReports
-                                   └── has one ──── CarbonEstimate
+User ──────── has many ──── Farm
+                              ├── EligibilityAssessment
+                              ├── MonitoringReport ── VerificationRecord
+                              ├── FarmerReport ────── VerificationRecord
+                              ├── CarbonEstimate
+                              └── PoolMembership ──── Pool
 
-Pool ─── has many ──── PoolMemberships ─── links to ──── Farms
-  ├── has many ──── VerificationRecords
-  └── has one ─── CarbonEstimate (pooled)
-
-User (Verifier) ─── creates ──── VerificationRecords
+Pool ──────── managed by ── User (AGGREGATOR)
+              has many ──── PoolMembership, CarbonEstimate
 ```
 
-### Main Entities
-
-| Entity | Belongs To | Purpose |
-|--------|-----------|---------|
-| **User** | N/A | Central actor — every other entity traces to a user by role |
-| **Farm** | Farmer-User | Physical reality: GPS, boundary, size, land use history, species planned |
-| **EligibilityAssessment** | Farm | VM0047 scoring: criteria scores, overall result (Eligible/Review/Ineligible) |
-| **Pool** | Aggregator | Aggregation unit submitted to registry; has status in lifecycle, aggregate stats |
-| **PoolMembership** | N/A | Join table between Farms and Pools; a farm in one pool only |
-| **MonitoringReport** | Farm | Satellite NDVI snapshot at a point in time; many form the time-series trend |
-| **FarmerReport** | Farm | Self-submitted field observation: report type, photos, measurements, GPS |
-| **VerificationRecord** | Pool | Verifier's decision on monitoring cycle: approved/rejected with findings |
-| **CarbonEstimate** | Farm + Pool | Estimated sequestration at individual farm level and pooled level |
-
-### Key Architectural Decision
-
-**The Farm is the unit of measurement; the Pool is the unit of registration.**
-
-This separation allows:
-- **Individual farmer data** stays granular (important for earnings allocation and audit)
-- **Pool presents** a unified project face to the registry
+**Note:** The MVP screening flow does NOT use the database. Questionnaire answers are stored in browser sessionStorage, processed client-side, and never sent to a server.
 
 ---
 
-## 8. End-to-End Workflow
+## 8. Workflow
 
-### 1. ONBOARDING
+### MVP Flow (Live at farmer-aggregation.vercel.app)
 ```
-Farmer discovers platform
-→ registers account
-→ selects Farmer role
-→ lands on personal dashboard
-```
-
-### 2. FARM REGISTRATION
-```
-Adds farm details
-→ pins location on map
-→ declares land size, land history, planned species
-→ uploads ownership document
-```
-
-### 3. ELIGIBILITY SCREENING
-```
-Runs 5-step VM0047 wizard
-→ system scores each criterion
-→ receives result with score breakdown
+Landing page → "Start Free Eligibility Check"
+  ↓
+Section 1: Country, land area, activity type
+Section 2: Land history (4 questions including canopy cover)
+Section 3: Land tenure (4 questions including regulatory surplus)
+Section 4: Planting design (tree density, land use continuity)
+Section 5: Carbon inputs (multi-species selection, climate zone)
+  ↓
+Results page (two-column):
+  LEFT:  Verdict → 6 criteria breakdown → approach indicator → pooling explainer
+  RIGHT: Sticky carbon estimate card (period toggle, tCO₂e range, price range, CTA)
+  ↓
+"Discuss Next Steps" → mailto:hello@carbonfarm.io
 ```
 
-**Three possible outcomes:**
-- **Ineligible** — told why, workflow ends
-- **Needs review** — flagged for aggregator/admin assessment
-- **Eligible** — unlocked to join pools
-
-### 4. AGGREGATION
-
-#### Option A — Auto
-System detects eligible unassigned farm, clusters with nearby farms, proposes pool assignment
-
-#### Option B — Manual
-Farmer browses available pools near them, reviews pool details, applies to join
-
+### V1 Platform Flow (In Code, Not Public)
 ```
-Farmer joins pool
-→ aggregator approves membership
-→ pool aggregate stats update
-```
-
-### 5. PROJECT REGISTRATION (Aggregator-led)
-```
-Aggregator reviews pool composition
-→ confirms all farms eligible
-→ submits pool for validation
-→ pool moves to REGISTERED
-```
-
-**In reality:** Formal PDD submitted to Verra, audit conducted
-
-### 6. MONITORING PHASE (ongoing, 20–100 years)
-
-**Automated satellite component:**
-- Every ~5 days: NDVI snapshot captured automatically
-
-**Farmer-driven component:**
-- Monthly/quarterly: farmer submits field report via app
-
-**System accumulates both data streams continuously**
-
-### 7. VERIFICATION (typically annual)
-```
-Verifier opens monitoring period
-→ reviews satellite trend vs farmer reports
-→ anomaly flags highlighted
-→ investigates discrepancies
-→ approves or rejects period with written findings
-```
-
-### 8. CREDIT ISSUANCE
-```
-Approved monitoring periods accumulate
-→ carbon estimate finalised
-→ credits issued proportional to each farm's land area contribution
-→ pool status moves to CREDIT_ISSUED
+Register → Login → Dashboard → Register farm on map → Eligibility wizard
+→ Join pool → Monitoring (satellite + field reports) → Verification → Credits
 ```
 
 ---
 
 ## 9. Assumptions Made
 
-### On the Methodology
-VM0047 was chosen as the target standard, but real selection depends on:
-- Country
-- Project scale
-- Buyer requirements
-- Geographic scope qualification
-
-Other standards (Gold Standard, Plan Vivo, national REDD+ programs) have different rules entirely.
-
-### On the Scoring
-The eligibility weights and thresholds are reasonable approximations but **not calibrated** against actual Verra decisions.
-
-A real pre-screening would be validated against a dataset of approved/rejected PDD submissions.
-
-### On Farmers
-Assumes:
-- Smartphone access
-- Basic literacy
-- Willingness to submit regular reports
-- Land ownership maps onto local context
-
-**Problem in many target regions:** Land is communally owned or informally titled — this breaks several assumptions simultaneously.
-
-### On Satellite Data
-NDVI is a reasonable biomass proxy for **screening purposes**, but professional MRV uses:
-- Certified allometric equations per species
-- Field plot measurements for ground-truthing
-- Sometimes LiDAR
-
-**Reality:** NDVI alone would not pass a Verra audit.
-
-### On Connectivity
-Field reports assume **internet connectivity at the farm level**. Rural areas often have none.
-
-### On the Aggregator
-Assumes a **single legal entity** owns the pool and is accountable to the registry.
-
-Real projects often involve:
-- Consortium structures
-- Community land agreements
-- Complex benefit-sharing contracts
-
-None of which are modelled.
-
-### On Carbon Price
-The system estimates credit **volume** but says nothing about **price**, which fluctuates between $5 and $50+ per tonne depending on:
-- Project type
-- Vintage
-- Buyer
+| Assumption | Reality Check |
+|-----------|---------------|
+| VM0047 v1.1 is the right methodology | Most relevant for ARR, but other standards exist |
+| IPCC default values sufficient for pre-feasibility | Yes for screening; formal validation needs site-specific data |
+| ±30% uncertainty band covers estimation error | Conservative for pre-feasibility |
+| $5–15/tCO₂e price range | Reasonable for voluntary market; no VM0047 credits issued yet |
+| Farmers can accurately report land history | They know their land, but technical terms may need simpler language |
+| 10% canopy cover = non-forest threshold | Country-specific; we use 10% pass, 10–30% flag, >30% fail |
+| Equal weighting across species | Simplification; real projects allocate area per species |
 
 ---
 
 ## 10. Current Limitations
 
-| Gap | Why it Matters |
-|-----|----------------|
-| **Satellite API not connected** | NDVI charts show placeholder data. Architecture wired for Sentinel Hub but integration isn't live |
-| **No photo storage** | Farmer photos can be uploaded in UI but no cloud storage backend to save/serve them |
-| **Eligibility is pre-screening only** | Not a substitute for formal Project Design Document or third-party validation |
-| **No legal layer** | No contracts, benefit-sharing agreements, or verified land tenure — critical for projects locking in land use for 50 years |
-| **No notifications** | No emails/alerts when pool status changes, verification due, or anomalies detected |
-| **No credit issuance mechanism** | Credits estimated but no way to sell, transfer, or retire them |
-| **Single methodology** | Only VM0047. Real deployments need multiple for different land types/countries |
-| **No offline support** | Rural farmers without internet can't submit reports |
-| **No multi-tenancy** | One platform instance serves all. Enterprise deployments need isolated environments per country/program |
+| Limitation | Impact |
+|-----------|--------|
+| No server-side data persistence | Results lost when browser session ends |
+| No Sentinel Hub integration | Satellite monitoring prepared but not connected |
+| No file uploads | Can't collect ownership documents or site photos |
+| Country-specific forest definitions not implemented | Using simplified canopy cover brackets |
+| No leakage assessment (VMD0054) | Required by VM0047, out of scope |
+| No stocking index / permanence buffer | VM0047 discount not modeled |
+| No baseline carbon calculation | Gross sequestration only, not net |
+| Static price estimate ($5–15) | No marketplace integration |
+| No lead capture | mailto link only, no CRM |
+| Tamil translation needs native review | Machine-quality, especially technical terms |
 
 ---
 
 ## 11. Future Extensions
 
-### Real Satellite Pipeline
-Move from on-demand API calls to a **scheduled data pipeline**:
-- Automated NDVI pulls every 5 days per farm
-- Stored as time-series
-- Anomaly detection running continuously
-- Integrate change detection (sudden NDVI drop = potential deforestation)
-- Instant alerts on events
+**Phase 2 (Near Term):** Lead capture form, save/share results via URL, real satellite integration, stocking index, country-specific forest definitions, species area allocation
 
-### Legal and Governance Infrastructure
-- Digital land rights verification against national cadastre systems
-- Smart contracts encoding benefit-sharing terms
-- Legally binding crediting period commitments
-- Dispute resolution mechanisms
+**Phase 3 (Medium Term):** Offline-first mobile app, legal/governance layer, multi-methodology support (REDD+, Gold Standard), aggregator dashboard revival, automated MRV pipeline
 
-**Note:** Arguably more important than the technology — can't issue credits without clear land rights.
-
-### Multi-methodology Engine
-A **pluggable scoring engine** where each carbon methodology is a separate module:
-- REDD+ (avoided deforestation)
-- Improved cookstoves
-- Soil carbon
-- Blue carbon mangroves
-- Each with own eligibility rules, carbon models, monitoring requirements
-
-VM0047 becomes one of many.
-
-### Carbon Credit Marketplace
-- Buyer profiles
-- Credit listings with project provenance data
-- Price discovery
-- Transaction records
-- Potentially on-chain retirement of credits for public transparency (growing buyer requirement)
-
-### Offline-first Mobile App
-A **native app** allowing farmers to submit reports without internet:
-- Data queues locally
-- Syncs when connectivity available
-- **Critical** for reaching farmers who need this most
-
-### Field Agent Network Integration
-A **fourth data stream** beyond satellite and self-reporting:
-- Periodic field visits by trained agents
-- Physical measurements
-- Ground-truth the satellite data
-- Especially important for first monitoring year when NDVI baselines established
-
-### ML-powered Anomaly Detection
-Replace rule-based flags with a **trained model** that learns from thousands of reporting cycles:
-- What legitimate patterns look like
-- What fraudulent or erroneous patterns look like
-- Over time becomes more accurate than hand-coded rules
-
-### Registry API Integration
-**Direct programmatic submission** to Verra, Gold Standard, or national registries:
-- Instead of generating PDF documents for manual upload
-- Closes the last mile of automation story
+**Phase 4 (Long Term):** Credit marketplace, registry API integration, ML anomaly detection, payment infrastructure, multi-language expansion (Hindi, Bahasa, Swahili, Spanish)
 
 ---
 
-## Through-Line
+## Technical Stack
 
-Every future extension is in service of the **same goal**: making a market that currently requires $200,000+ in upfront costs and years of consultant time accessible to someone with a 2-hectare field and a basic smartphone.
-
-The technology is only as valuable as its ability to close that gap.
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16, TypeScript, App Router |
+| UI | Tailwind CSS 4, shadcn/ui, Lucide icons |
+| Database | PostgreSQL + Prisma 7 |
+| Auth | Auth.js v5 (NextAuth) |
+| i18n | react-i18next (English + Tamil) |
+| Carbon Model | IPCC 2019/2006 allometric tables |
+| Deployment | Vercel |
+| Repo | github.com/SayeeSaran/farmer-aggregation |
+| Live URL | farmer-aggregation.vercel.app |
 
 ---
 
-## Key Takeaways
-
-| Aspect | Reality |
-|--------|---------|
-| **Problem we solve** | Carbon market access for smallholders who are mathematically excluded today |
-| **How we solve it** | Aggregation + automation (eligibility + monitoring) |
-| **Stage we're at** | MVP with architecture for satellite integration, real MRV data flows, and multi-methodology support |
-| **Biggest missing pieces** | Real satellite pipeline, legal/land rights layer, marketplace mechanics |
-| **Hardest challenge ahead** | Trust — farmers and verifiers need to believe in the system's integrity from day one |
+*Last updated: March 2026*
