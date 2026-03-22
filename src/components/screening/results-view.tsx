@@ -121,7 +121,7 @@ export function ResultsView() {
 
   const v = verdictConfig[result.verdict];
   const speciesLabels = questionnaire.speciesTypes
-    .map((s) => t(`questionnaire.section5.${s}`))
+    .map((s) => s.startsWith("custom:") ? s.replace("custom:", "") : t(`questionnaire.section5.${s}`))
     .join(", ");
 
   return (

@@ -43,7 +43,14 @@
       "directPlanting": "Direct planting (seedlings or saplings)",
       "directSeeding": "Direct seeding",
       "assistedRegeneration": "Assisted natural regeneration",
-      "notSure": "Not sure yet"
+      "notSure": "Not sure yet",
+      "location": "State / Region / Village",
+      "locationPlaceholder": "e.g. Tamil Nadu, Chiang Mai, Mato Grosso",
+      "locationHelp": "Helps auto-detect your climate zone for carbon estimation.",
+      "landParcelsHelp": "Add each land parcel separately if you have multiple plots.",
+      "parcelName": "Parcel {{number}}",
+      "addParcel": "Add another parcel",
+      "totalArea": "Total area"
     },
     "section2": {
       "title": "Land History",
@@ -116,6 +123,8 @@
       "rubber": "Rubber",
       "mixedNative": "Mixed native species",
       "otherSpecies": "Other",
+      "customSpeciesPlaceholder": "Enter species name",
+      "climateSuggested": "Based on your location ({{location}}), we suggest: {{zone}}",
       "climateZone": "What is the climate in your area?",
       "tropical": "Tropical (hot, humid year-round)",
       "subtropical": "Subtropical (warm, seasonal rainfall)",

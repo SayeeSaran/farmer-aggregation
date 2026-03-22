@@ -3,22 +3,26 @@
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 
-export function LanguageSwitcher() {
-  const { i18n, t } = useTranslation();
-  const current = i18n.language;
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "ta", label: "தமிழ்" },
+];
 
-  const toggle = () => {
-    const next = current === "ta" ? "en" : "ta";
-    i18n.changeLanguage(next);
-  };
+export function LanguageSwitcher() {
+  const { i18n } = useTranslation();
 
   return (
-    <button
-      onClick={toggle}
-      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
-    >
-      <Globe className="h-4 w-4" />
-      <span>{current === "ta" ? t("common.english") : t("common.tamil")}</span>
-    </button>
+    <div className="inline-flex items-center gap-1.5">
+      <Globe className="h-4 w-4 text-muted-foreground" />
+      <select
+        value={i18n.language}
+        onChange={(e) => i18n.changeLanguage(e.target.value)}
+        className="text-sm bg-transparent border-none focus:outline-none cursor-pointer text-muted-foreground hover:text-foreground"
+      >
+        {LANGUAGES.map((lang) => (
+          <option key={lang.code} value={lang.code}>{lang.label}</option>
+        ))}
+      </select>
+    </div>
   );
 }
